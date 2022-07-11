@@ -1,4 +1,7 @@
 package com.hrblizz.fileapi.data.entities
 
-class StatusEntity {
+import org.springframework.data.mongodb.core.mapping.Document
+
+@Document(collection="status")
+class StatusEntity : Entity() {
 }

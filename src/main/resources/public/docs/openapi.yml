@@ -11,6 +11,89 @@ paths:
       responses:
         '200':
           description: It's a response.
+  /files:
+    post:
+      summary: Files
+      description: Upload File.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/filesRequest"
+      responses:
+        '201':
+          description: Added File
+          content:
+            application/json:
+              examples:
+                "Successfully Added File":
+                  value:
+                    data:
+                      ok: true
+                      token: "04fa0768-46c2-494c-905b-f9d5a9c2b512"
+                    errors: null
+                    status: 201
+              schema:
+                $ref: "#/components/schemas/filesResponse"
+        '400':
+          description: "Bad Request"
+          content: application/json
+        '418':
+          description: "I'm a teapot!"
+          content: application/json
+        '503':
+          description: "Service Unavailable"
+          content: application/json
+  /file/{token}:
+    get:
+      summary: File
+      description: Download file
+      responses:
+        '200': Success
+        '400': Bad Request
 
 security:
-  - basicAuth: []
+  - basicAuth:
+    - read
+    - write
+
+components:
+  schemas:
+    filesRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the file
+        contentType:
+          type: string
+          description: File content type
+        meta:
+          type: string
+          description: JSON of file metadata
+        source:
+          type: string
+          description: Source of the file (timesheet, mss, hrb, ...)
+        expireTime:
+          type: string
+          format: date-time
+          description: Date when file expires. Optional
+    filesResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            ok:
+              type: boolean
+              description: Boolean showing whether the operation was a success
+            token:
+              type: string
+              description: Unique identifier referring to the uploaded file
+        errors:
+          type: string
+        status:
+          type: int
+
+

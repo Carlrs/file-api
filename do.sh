@@ -24,6 +24,10 @@ if [ $1 = "start" ]; then
   export ENV_DEBUG_MODE=true
 
   mvn spring-boot:run
+elif [ $1 = "debug" ]; then
+  echo_info "Starting File API in debug mode"
+  mvn spring-boot:run -X -Dspring-boot.run.jvmArguments="-Xdebug 
+-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005"
 else
   echo_error "Unknown command"
 fi

@@ -14,15 +14,16 @@ import java.util.*
 import java.util.Objects.isNull
 
 @RestController
-class FileController(
-    private val entityRepository: EntityRepository<Any?>
+class FileUploadController(
+    private val entityRepository: EntityRepository<FileEntity>
 ) {
     @PostMapping("/files", consumes = ["multipart/form-data"] )
     fun postFile(@RequestPart("content") content: MultipartFile?,
                  @RequestPart("contentType") contentType: String?,
                  @RequestPart("source") source: String?,
                  @RequestPart("expireTime") expireTime: String?,
-                 @RequestPart("meta") meta: String?
+                 @RequestPart("meta") meta: String?,
+                 @RequestPart("name") fileName: String?
                 ): ResponseEntity<Map<String, Any>> {
         var status = HttpStatus.CREATED
         val token = UUID.randomUUID().toString()
@@ -32,12 +33,13 @@ class FileController(
             entityRepository.save(FileEntity().also {
                 if (isNull(content)) throw BadRequestException("Missing file")
                 it.name = token
-                it.value = content?.name ?: token
+                it.value = fileName ?: content?.originalFilename ?: token
                 it.contentType = contentType ?:
                     throw BadRequestException("Missing content type")
                 it.source = source ?:
                     throw BadRequestException("Missing file source")
                 it.expireTime = LocalDate.parse(expireTime ?: "1970-01-01")
+                it.createTime = LocalDate.now()
                 it.meta = meta ?:
                     throw BadRequestException("Missing file metadata")
                 it.content = Binary(BsonBinarySubType.BINARY, content!!.bytes)
@@ -58,17 +60,6 @@ class FileController(
                 "error" to errorText
             ),
             status.value()
-        )
-    }
-    @GetMapping("/file/{token}")
-    fun getFile(@PathVariable token: String): ResponseEntity<Map<String, Any>> {
-        val file: FileEntity = entityRepository.findByUUID(token) as FileEntity
-        return ResponseEntity(
-            mapOf(
-                "ok" to true,
-                "file" to file.content
-            ),
-            HttpStatus.OK.value()
         )
     }
 }
