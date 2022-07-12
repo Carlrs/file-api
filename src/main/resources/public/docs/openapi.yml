@@ -7,27 +7,32 @@ paths:
   /status:
     get:
       summary: Status
-      description: Get Status.
+      description: Get server status
       responses:
         '200':
-          description: It's a response.
+          description: OK
+        '418':
+          description: I'm a teapot!
+        '503':
+          description: Service unavailable
+
   /files:
     post:
-      summary: Files
-      description: Upload File.
+      summary: Upload file
+      description: Upload a file to the database
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
-              $ref: "#/components/schemas/filesRequest"
+              $ref: "#/components/schemas/fileUploadRequest"
       responses:
         '201':
           description: Added File
           content:
             application/json:
               examples:
-                "Successfully Added File":
+                'Successfully added file':
                   value:
                     data:
                       ok: true
@@ -35,24 +40,114 @@ paths:
                     errors: null
                     status: 201
               schema:
-                $ref: "#/components/schemas/filesResponse"
+                $ref: "#/components/schemas/fileUploadResponse"
         '400':
-          description: "Bad Request"
-          content: application/json
-        '418':
-          description: "I'm a teapot!"
-          content: application/json
+          description: Bad Request
+          content:
+            application/json:
+              examples:
+                'Failed to add file due to missing content type':
+                  value:
+                    data:
+                      ok: false
+                      token: null
+                    errors: "Missing content type"
+                    status: 400
+              schema:
+                $ref: "#/components/schemas/fileUploadResponse"
         '503':
-          description: "Service Unavailable"
-          content: application/json
+          description: Service Unavailable
+          content:
+            application/json:
+              examples:
+                'Failed to add file due to unknown error':
+                  value:
+                    data:
+                      ok: false
+                      token: null
+                    errors: "Unknown error"
+                    status: 503
+              schema:
+                $ref: "#/components/schemas/fileUploadResponse"
+
   /file/{token}:
     get:
-      summary: File
-      description: Download file
+      summary: Download file
+      description: Download a previously uploaded file
       responses:
-        '200': Success
-        '400': Bad Request
+        '200':
+          description: OK
+          content:
+            application/octet-stream:
+              examples:
+                'File download successful':
+                  value: Base64 encoded file here
+              schema:
+                $ref: "#/components/schemas/fileDownloadResponse"
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              examples:
+                'File not found':
+                  value: "File was not found"
+              schema:
+                $ref: "#/components/schemas/fileNotFoundResponse"
+    delete:
+      summary: Delete file
+      description: Delete file from database
+      responses:
+        '200':
+          description: OK
+        '503':
+          description: Internal server error
+          content:
+            application/json:
+              examples:
+                'Unknown Error':
+                  value:
+                    data:
+                      ok: false
+                      error: "Unknown error"
+                    status: 503
 
+  /files/metas:
+    get:
+      summary: Get metadata
+      description: Get metadata for one or multiple files
+      requestBody:
+        required: true
+        content:
+          application/json:
+            examples:
+              'Two file tokens':
+                value:
+                  tokens: ['73fd8f41-2dd3-4178-aaeb-2f37f13e7ed2',
+                           'ef9bee7a-2304-4f91-bc72-610e6342540b']
+            schema:
+              $ref: "#/components/schemas/metadataRequest"
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              examples:
+                'Single file metadata':
+                  value:
+                    metas:
+                      items:
+                        '73fd8f41-2dd3-4178-aaeb-2f37f13e7ed2':
+                          name: example.pdf
+                          contentType: Application/pdf
+                          createTime: 2022-07-11
+                          meta: {
+                            "creatorEmployeeId": 1
+                          }
+                          size: 12345678
+
+              schema:
+                $ref: "#/components/schemas/fileMetadataResponse"
 security:
   - basicAuth:
     - read
@@ -60,12 +155,16 @@ security:
 
 components:
   schemas:
-    filesRequest:
+    fileUploadRequest:
       type: object
       properties:
         name:
           type: string
           description: Name of the file
+        content:
+          type: string
+          format: binary
+          description: File to be uploaded
         contentType:
           type: string
           description: File content type
@@ -79,7 +178,7 @@ components:
           type: string
           format: date-time
           description: Date when file expires. Optional
-    filesResponse:
+    fileUploadResponse:
       type: object
       properties:
         data:
@@ -90,10 +189,65 @@ components:
               description: Boolean showing whether the operation was a success
             token:
               type: string
-              description: Unique identifier referring to the uploaded file
+              description: Unique identifier referring to the uploaded file (if successful)
         errors:
           type: string
+          format: json
+          description: Errors occurred
         status:
-          type: int
-
-
+          type: integer
+          description: HTTP status code
+    fileUploadResponseObject:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          description: Boolean showing whether the operation was a success
+        token:
+          type: string
+          description: Unique identifier referring to the uploaded file
+    fileDownloadResponse:
+      type: string
+      description: The file that was requested
+      format: binary
+    fileNotFoundResponse:
+      type: string
+      description: File was not found
+    fileMetadataResponse:
+      type: object
+      properties:
+        metas:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Name of the file
+              contentType:
+                type: string
+                description: File content type
+              size:
+                type: integer
+                description: File size in bytes
+              meta:
+                type: string
+                description: JSON of file metadata
+              source:
+                type: string
+                description: Source of the file (timesheet, mss, hrb, ...)
+              createTime:
+                type: string
+                format: date
+                description: Upload date
+        status:
+          type: integer
+          description: Http status code
+    metadataRequest:
+      type: object
+      properties:
+        tokens:
+          type: array
+          items:
+            type: string
+            description: UUID token for file

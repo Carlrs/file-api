@@ -29,7 +29,7 @@ class FileDeleteController(private val entityRepository: EntityRepository<FileEn
             mapOf(
                 "ok" to success,
                 "error" to errorText
-            ), HttpStatus.OK.value()
+            ), if (success) HttpStatus.OK.value() else HttpStatus.INTERNAL_SERVER_ERROR.value()
         )
     }
 }

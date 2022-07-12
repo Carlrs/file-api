@@ -3,6 +3,7 @@ package com.hrblizz.fileapi.controller
 import com.hrblizz.fileapi.controller.exception.BadRequestException
 import com.hrblizz.fileapi.data.entities.FileEntity
 import com.hrblizz.fileapi.data.repository.EntityRepository
+import com.hrblizz.fileapi.rest.ErrorMessage
 import com.hrblizz.fileapi.rest.ResponseEntity
 import org.bson.BsonBinarySubType
 import org.bson.types.Binary
@@ -27,7 +28,7 @@ class FileUploadController(
                 ): ResponseEntity<Map<String, Any>> {
         var status = HttpStatus.CREATED
         val token = UUID.randomUUID().toString()
-        var errorText = "No errors"
+        val errorList = ArrayList<ErrorMessage>()
 
         try {
             entityRepository.save(FileEntity().also {
@@ -46,19 +47,19 @@ class FileUploadController(
             })
         } catch (e: BadRequestException) {
             status = HttpStatus.BAD_REQUEST
-            errorText = e.message ?: "Unknown Error"
+            errorList.add(ErrorMessage(e.message ?: "Unknown Issue with request"))
         }
         catch (e: Exception) {
             status = HttpStatus.SERVICE_UNAVAILABLE
-            errorText = e.message ?: "Unknown Error"
+            errorList.add(ErrorMessage(e.message ?: "Unknown Error"))
         }
 
         return ResponseEntity(
             mapOf(
                 "ok" to (status == HttpStatus.CREATED),
                 "token" to if (status == HttpStatus.CREATED) token else "null",
-                "error" to errorText
             ),
+            errorList,
             status.value()
         )
     }
